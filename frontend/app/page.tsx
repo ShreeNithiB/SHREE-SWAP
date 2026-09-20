@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { ArrowDownUp, ArrowRight, Check, ChevronDown, ExternalLink, Info, Menu, Plus, Settings, ShieldCheck, Wallet, X, Loader2 } from 'lucide-react'
+import { ArrowDownUp, ArrowRight, Check, ChevronDown, ExternalLink, Info, Menu, Plus, Settings, ShieldCheck, Wallet, X, Loader2, LogOut } from 'lucide-react'
 import { setBlockchainConfig, connectWallet, getConnectedAccount, getSHBalance, getETHBalance, getReserves, getExpectedOutput, swapSHForETH, swapETHForSH, getPrices, getTotalLiquidity, getUserLiquidity, addLiquidity, removeLiquidity, approveSH, checkAllowance, getRecentSwaps, SwapEvent } from '@/lib/blockchain/src'
 import { formatEther } from 'ethers'
 
@@ -43,12 +43,12 @@ function WalletButton({ account, onClick, isConnecting }: { account: string | nu
   return <button className="wallet-button" onClick={onClick} disabled={isConnecting}>{isConnecting ? <><Loader2 size={16} style={{ display: 'inline', marginRight: '6px', animation: 'spin 1s linear infinite' }} /> Connecting...</> : account ? <><span className="wallet-dot" />{account.slice(0, 6)}...{account.slice(-4)}</> : <><Wallet size={16} /> Connect wallet</>}</button>
 }
 
-function Header({ page, setPage, account, onConnect, isConnecting }: { page: string; setPage: (page: string) => void; account: string | null; onConnect: () => void; isConnecting?: boolean }) {
+function Header({ page, setPage, account, onConnect, onDisconnect, isConnecting }: { page: string; setPage: (page: string) => void; account: string | null; onConnect: () => void; onDisconnect: () => void; isConnecting?: boolean }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   return <header className="header"><div className="header-inner">
     <button className="brand" onClick={() => setPage('swap')}><span className="brand-mark"><Image src={SOURCE_IMAGE} alt="Shree wolf logo" width={34} height={34} /></span><span>SHREE <em>SWAP</em></span></button>
     <nav className={mobileOpen ? 'nav mobile-visible' : 'nav'}>{['swap', 'transactions'].map(item => <button key={item} className={page === item ? 'nav-link active' : 'nav-link'} onClick={() => { setPage(item); setMobileOpen(false) }}>{item[0].toUpperCase() + item.slice(1)}</button>)}</nav>
-    <div className="header-actions"><NetworkBadge /><WalletButton account={account} onClick={onConnect} isConnecting={isConnecting} /><button className="menu-button" aria-label="Toggle menu" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={21} /> : <Menu size={21} />}</button></div>
+    <div className="header-actions"><NetworkBadge /><div style={{display: 'flex', gap: '8px', alignItems: 'center'}}><WalletButton account={account} onClick={onConnect} isConnecting={isConnecting} />{account && <button className="icon-button" onClick={onDisconnect} aria-label="Disconnect wallet" title="Disconnect wallet" style={{background: '#ffffff1a', color: '#ff6b6b'}}><LogOut size={16} /></button>}</div><button className="menu-button" aria-label="Toggle menu" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={21} /> : <Menu size={21} />}</button></div>
   </div></header>
 }
 
@@ -203,10 +203,16 @@ export default function Page() {
     }
   }
 
+  const handleDisconnect = () => {
+    setAccount(null);
+    setShBalance('0');
+    setEthBalance('0');
+  }
+
   const handleUpdate = () => {
     fetchBalances()
     fetchStats()
   }
 
-  return <><Header page={page} setPage={setPage} account={account} onConnect={handleConnect} isConnecting={isConnecting} /><main className="app-shell">{page === 'swap' && <><section className="hero"><div className="hero-copy"><div className="hero-logo"><Image src={SOURCE_IMAGE} alt="Purple Shree wolf emblem" width={84} height={84} /></div><p className="eyebrow">DECENTRALIZED EXCHANGE</p><h2>A simpler way to <span>swap SHREE.</span></h2><p>Trade SHREE on Ethereum Sepolia with a transparent, non-custodial exchange.</p></div><SwapCard account={account} shBalance={shBalance} ethBalance={ethBalance} onUpdate={handleUpdate} /></section><PoolStats stats={stats} /></>}{page === 'transactions' && <TransactionsPage />}</main><footer><span>SHREE SWAP · Ethereum Sepolia</span><span>Built for the SHREE community</span></footer></> 
+  return <><Header page={page} setPage={setPage} account={account} onConnect={handleConnect} onDisconnect={handleDisconnect} isConnecting={isConnecting} /><main className="app-shell">{page === 'swap' && <><section className="hero"><div className="hero-copy"><div className="hero-logo"><Image src={SOURCE_IMAGE} alt="Purple Shree wolf emblem" width={84} height={84} /></div><p className="eyebrow">DECENTRALIZED EXCHANGE</p><h2>A simpler way to <span>swap SHREE.</span></h2><p>Trade SHREE on Ethereum Sepolia with a transparent, non-custodial exchange.</p></div><SwapCard account={account} shBalance={shBalance} ethBalance={ethBalance} onUpdate={handleUpdate} /></section><PoolStats stats={stats} /></>}{page === 'transactions' && <TransactionsPage />}</main><footer><span>SHREE SWAP · Ethereum Sepolia</span><span>Built for the SHREE community</span></footer></> 
 }
