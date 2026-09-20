@@ -1,0 +1,10 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend API layer for SHREE SWAP",
+  "scripts": {
+    "dev": "echo \"No backend service currently required.\""
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,153 @@
+Build a production-quality frontend UI for a decentralized exchange called "SHREE SWAP".
+
+This is a Uniswap-inspired Ethereum Sepolia testnet DEX for a custom ERC-20 token.
+
+Token:
+- Name: SHREE
+- Symbol: SH
+- Maximum supply: 1,000,000 SH
+- Initial circulating supply: 500,000 SH
+- Trading pair: SH / ETH
+- Network: Ethereum Sepolia
+- Wallet: MetaMask
+
+IMPORTANT:
+This is a blockchain application UI. Do not create fake backend data or pretend transactions are real. The frontend should be structured so that real smart-contract integration can be connected later through ethers.js.
+
+DESIGN:
+Create a clean, simple, elegant fintech-style interface.
+Avoid gaming aesthetics.
+Avoid excessive gradients.
+Avoid excessive cards.
+Use a light background with navy/indigo text and subtle cyan/blue accents.
+Use generous spacing, rounded corners, subtle borders and minimal shadows.
+Make the interface responsive for desktop and mobile.
+
+HEADER:
+- SHREE SWAP logo/text
+- Navigation: Swap, Liquidity, Transactions
+- Network indicator: Ethereum Sepolia
+- Connect Wallet button
+- When connected, show shortened wallet address
+
+MAIN SWAP PAGE:
+
+Create a centered swap card.
+
+Title:
+"Swap SH ↔ ETH"
+
+Subtitle:
+"Trade SHREE tokens on Ethereum Sepolia"
+
+Swap input:
+Label: "You pay"
+Large amount input
+Token selector: SH
+Show available SH balance
+
+Swap direction button between the two inputs.
+
+Second input:
+Label: "You receive"
+Large amount input/output
+Token selector: ETH
+Show available ETH balance
+
+Below inputs display:
+- Exchange rate
+- Minimum received
+- Price impact
+- Liquidity provider fee
+- Route: SH → ETH
+
+Primary button:
+"Connect Wallet" when disconnected
+"Enter amount" when no amount entered
+"Approve SH" for SH → ETH before approval
+"Swap" when ready
+
+LIQUIDITY PAGE:
+
+Title:
+"SH / ETH Liquidity Pool"
+
+Display:
+- SH reserve
+- ETH reserve
+- Current price
+- Total liquidity
+
+Create an elegant Add Liquidity section:
+
+SH amount input
+ETH amount input
+
+Display:
+- Pool share
+- Current price
+- Deposit amounts
+
+Buttons:
+"Approve SH"
+"Add Liquidity"
+
+Also include a Remove Liquidity section.
+
+TRANSACTIONS PAGE:
+
+Title:
+"Recent Swaps"
+
+Create a clean table/list containing:
+- Time
+- Wallet
+- Direction
+- SH amount
+- ETH amount
+- Transaction status
+- View transaction
+
+Each transaction should have a link placeholder for Ethereum Sepolia block explorer.
+
+POOL OVERVIEW:
+
+On the Swap page, below the swap card, show a compact SH/ETH pool overview:
+- SH reserve
+- ETH reserve
+- Current price
+- 24h volume placeholder
+- Liquidity
+
+Do not use fake numerical blockchain statistics. If no smart-contract data is available, show "--" or "Connect wallet".
+
+TECHNICAL STRUCTURE:
+
+Use:
+- Next.js/React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui components
+- lucide-react icons
+
+Create reusable components:
+- Header
+- WalletButton
+- TokenInput
+- SwapCard
+- PoolStats
+- LiquidityCard
+- TransactionList
+- TransactionStatus
+- NetworkBadge
+
+Keep blockchain integration isolated in a services/hooks layer so ethers.js contract integration can be added later.
+
+Create placeholder contract configuration:
+- SHREE token contract address
+- SHREE Swap contract address
+- Ethereum Sepolia chain ID
+
+Do not implement a centralized backend for swaps.
+
+The visual result should look like a professional small DEX rather than a generic crypto dashboard.
