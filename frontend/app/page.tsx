@@ -47,7 +47,7 @@ function Header({ page, setPage, account, onConnect, isConnecting }: { page: str
   const [mobileOpen, setMobileOpen] = useState(false)
   return <header className="header"><div className="header-inner">
     <button className="brand" onClick={() => setPage('swap')}><span className="brand-mark"><Image src={SOURCE_IMAGE} alt="Shree wolf logo" width={34} height={34} /></span><span>SHREE <em>SWAP</em></span></button>
-    <nav className={mobileOpen ? 'nav mobile-visible' : 'nav'}>{['swap', 'liquidity', 'transactions'].map(item => <button key={item} className={page === item ? 'nav-link active' : 'nav-link'} onClick={() => { setPage(item); setMobileOpen(false) }}>{item[0].toUpperCase() + item.slice(1)}</button>)}</nav>
+    <nav className={mobileOpen ? 'nav mobile-visible' : 'nav'}>{['swap', 'transactions'].map(item => <button key={item} className={page === item ? 'nav-link active' : 'nav-link'} onClick={() => { setPage(item); setMobileOpen(false) }}>{item[0].toUpperCase() + item.slice(1)}</button>)}</nav>
     <div className="header-actions"><NetworkBadge /><WalletButton account={account} onClick={onConnect} isConnecting={isConnecting} /><button className="menu-button" aria-label="Toggle menu" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={21} /> : <Menu size={21} />}</button></div>
   </div></header>
 }
@@ -67,34 +67,14 @@ function PoolStats({ stats }: { stats: any }) {
 }
 
 function SwapCard({ account, shBalance, ethBalance, onUpdate }: { account: string | null, shBalance: string, ethBalance: string, onUpdate: () => void }) {
-  const [amountIn, setAmountIn] = useState('')
-  const [amountOut, setAmountOut] = useState('')
-  const [isSHForETH, setIsSHForETH] = useState(true)
-  const [allowance, setAllowance] = useState('0')
+  const [amountIn, setAmountIn] = useState('0.0002') // Fixed input
+  const amountOut = '10' // Fixed output
+  const isSHForETH = false // Locked to ETH -> SHREE
   const [txState, setTxState] = useState<'idle'|'preparing'|'confirming'|'pending'|'success'|'failed'>('idle')
   const [txHash, setTxHash] = useState('')
 
-  useEffect(() => {
-    if (account) {
-      checkAllowance(account).then(setAllowance)
-    }
-  }, [account])
-
-  useEffect(() => {
-    if (amountIn && parseFloat(amountIn) > 0) {
-      const delay = setTimeout(() => {
-        getExpectedOutput(amountIn, isSHForETH).then(setAmountOut)
-      }, 300)
-      return () => clearTimeout(delay)
-    } else {
-      setAmountOut('')
-    }
-  }, [amountIn, isSHForETH])
-
-  const hasAmount = amountIn.trim().length > 0 && parseFloat(amountIn) > 0
-  const needsApproval = isSHForETH && parseFloat(allowance) < parseFloat(amountIn || '0')
-  const bal = isSHForETH ? shBalance : ethBalance
-  const hasBalance = parseFloat(bal) >= parseFloat(amountIn || '0')
+  const hasAmount = amountIn === '0.0002'
+  const hasBalance = parseFloat(ethBalance) >= 0.0002
   const loading = txState !== 'idle' && txState !== 'success' && txState !== 'failed'
   
   const handleSwap = async () => {
@@ -102,110 +82,25 @@ function SwapCard({ account, shBalance, ethBalance, onUpdate }: { account: strin
     setTxState('preparing')
     setTxHash('')
     try {
-      if (needsApproval) {
-        setTxState('confirming')
-        const tx = await approveSH(amountIn)
-        setTxState('pending')
-        setTxHash(tx.hash || '')
-        await tx.wait()
-        setAllowance(amountIn)
-        setTxState('idle')
-      } else {
-        const slippage = 0.99 // 1% slippage for simplicity
-        const minOut = (parseFloat(amountOut) * slippage).toFixed(18)
-        setTxState('confirming')
-        let tx;
-        if (isSHForETH) {
-          tx = await swapSHForETH(amountIn, minOut)
-        } else {
-          tx = await swapETHForSH(amountIn, minOut)
-        }
-        setTxState('pending')
-        setTxHash(tx.hash || '')
-        await tx.wait()
-        
-        setAmountIn('')
-        setAmountOut('')
-        setTxState('success')
-        onUpdate()
-      }
+      // Small slippage buffer for the fixed rate
+      const minOut = "9.9"
+      setTxState('confirming')
+      
+      const tx = await swapETHForSH(amountIn, minOut)
+      
+      setTxState('pending')
+      setTxHash(tx.hash || '')
+      await tx.wait()
+      
+      setTxState('success')
+      onUpdate()
     } catch (e: any) {
       console.error(e)
       setTxState('failed')
     }
   }
 
-  return <div className="swap-card"><div className="card-heading"><div><p className="eyebrow">SHREE / ETH</p><h1>Swap SHREE <span>↔</span> ETH</h1><p className="subheading">Trade SHREE tokens on Ethereum Sepolia</p></div><button className="icon-button" aria-label="Swap settings"><Settings size={18} /></button></div><div className="swap-fields"><TokenInput label="You pay" token={isSHForETH ? "SHREE" : "ETH"} balance={account ? (isSHForETH ? shBalance : ethBalance) : "Connect wallet"} value={amountIn} onChange={setAmountIn} /><button className="direction-button" aria-label="Reverse swap" onClick={() => setIsSHForETH(!isSHForETH)}><ArrowDownUp size={16} /></button><TokenInput label="You receive" token={!isSHForETH ? "SHREE" : "ETH"} balance={account ? (!isSHForETH ? shBalance : ethBalance) : "Connect wallet"} value={amountOut} disabled /></div><div className="trade-details"><div><span>Exchange rate</span><b>{amountOut ? `1 ${isSHForETH ? 'SHREE' : 'ETH'} = ${(parseFloat(amountOut) / parseFloat(amountIn)).toFixed(6)} ${!isSHForETH ? 'SHREE' : 'ETH'}` : '--'}</b></div><div><span>Minimum received</span><b>{amountOut ? (parseFloat(amountOut) * 0.99).toFixed(6) : '--'}</b></div><div><span>Price impact</span><b>{'< 1%'}</b></div><div><span>LP fee</span><b>0.3%</b></div><div className="route"><span>Route</span><b>{isSHForETH ? 'SHREE' : 'ETH'} <ArrowRight size={13} /> {!isSHForETH ? 'SHREE' : 'ETH'}</b></div></div><button className="primary-action" disabled={!account || (hasAmount && !hasBalance) || loading} onClick={handleSwap}>{loading ? (txState === 'confirming' ? 'Confirm in wallet...' : 'Transaction pending...') : !account ? 'Connect wallet' : !hasAmount ? 'Enter amount' : !hasBalance ? 'Insufficient balance' : needsApproval ? 'Approve SHREE' : 'Swap'} <ArrowRight size={17} /></button><TxStatus state={txState} hash={txHash} /><p className="wallet-note"><ShieldCheck size={14} /> Transactions are executed on Ethereum Sepolia</p></div>
-}
-
-function LiquidityPage({ account, shBalance, ethBalance, onUpdate }: any) {
-  const [shAmount, setShAmount] = useState('')
-  const [ethAmount, setEthAmount] = useState('')
-  const [allowance, setAllowance] = useState('0')
-  const [userLiq, setUserLiq] = useState('0')
-  const [price, setPrice] = useState('0')
-  const [txState, setTxState] = useState<'idle'|'preparing'|'confirming'|'pending'|'success'|'failed'>('idle')
-  const [txHash, setTxHash] = useState('')
-
-  useEffect(() => {
-    if (account) {
-      checkAllowance(account).then(setAllowance)
-      getUserLiquidity(account).then(setUserLiq)
-      getPrices().then(p => setPrice(p.shPrice))
-    }
-  }, [account])
-
-  const needsApproval = parseFloat(allowance) < parseFloat(shAmount || '0')
-  const hasAmount = shAmount && ethAmount
-  const loading = txState !== 'idle' && txState !== 'success' && txState !== 'failed'
-
-  const handleAdd = async () => {
-    setTxState('preparing')
-    setTxHash('')
-    try {
-      if (needsApproval) {
-        setTxState('confirming')
-        const tx = await approveSH(shAmount)
-        setTxState('pending')
-        setTxHash(tx.hash || '')
-        await tx.wait()
-        setAllowance(shAmount)
-        setTxState('idle')
-      } else {
-        setTxState('confirming')
-        const tx = await addLiquidity(shAmount, ethAmount)
-        setTxState('pending')
-        setTxHash(tx.hash || '')
-        await tx.wait()
-        setTxState('success')
-        onUpdate()
-      }
-    } catch(e:any) {
-      console.error(e)
-      setTxState('failed')
-    }
-  }
-
-  const handleRemove = async () => {
-    setTxState('confirming')
-    setTxHash('')
-    try {
-      const tx = await removeLiquidity(userLiq)
-      setTxState('pending')
-      setTxHash(tx.hash || '')
-      await tx.wait()
-      setTxState('success')
-      onUpdate()
-      getUserLiquidity(account).then(setUserLiq)
-    } catch(e:any) {
-      console.error(e)
-      setTxState('failed')
-    }
-  }
-
-  return <main className="page-wrap"><div className="page-title"><p className="eyebrow">LIQUIDITY</p><h1>SHREE / ETH Liquidity Pool</h1><p>Provide liquidity and earn a share of trading fees.</p></div><div className="liquidity-layout"><div className="liquidity-card"><div className="card-heading"><div><p className="eyebrow">ADD LIQUIDITY</p><h2>Deposit assets</h2></div><button className="icon-button"><Info size={18} /></button></div><TokenInput label="SHREE amount" token="SHREE" balance={account ? shBalance : "Connect wallet"} value={shAmount} onChange={setShAmount} /><TokenInput label="ETH amount" token="ETH" balance={account ? ethBalance : "Connect wallet"} value={ethAmount} onChange={setEthAmount} /><div className="deposit-summary"><div><span>Pool share</span><b>--</b></div><div><span>Current price</span><b>{price !== '0' ? `1 SHREE = ${price} ETH` : '--'}</b></div></div><button className="primary-action" disabled={!account || !hasAmount || loading} onClick={handleAdd}>{loading ? 'Pending...' : !account ? 'Connect wallet' : needsApproval ? 'Approve SHREE' : 'Add Liquidity'} <ArrowRight size={17} /></button><TxStatus state={txState} hash={txHash} /></div><div className="pool-panel"><p className="eyebrow">YOUR POSITION</p><h2>{userLiq !== '0' ? `${userLiq} LP Tokens` : 'Nothing deposited yet'}</h2><p>Connect your wallet to view your position and add liquidity to the SHREE / ETH pool.</p>
-  {!account && <button className="secondary-action">Connect wallet <Wallet size={16} /></button>}
-  <div className="remove-box"><span>Remove liquidity</span><button disabled={userLiq === '0' || loading} onClick={handleRemove}>{loading ? '...' : <Plus size={16} />} Manage position</button></div></div></div></main>
+  return <div className="swap-card"><div className="card-heading"><div><p className="eyebrow">FIXED RATE SWAP</p><h1>Swap ETH <span>→</span> SHREE</h1><p className="subheading">Get exactly 10 SHREE for 0.0002 Sepolia ETH</p></div><button className="icon-button" aria-label="Swap settings"><Settings size={18} /></button></div><div className="swap-fields"><TokenInput label="You pay" token="ETH" balance={account ? ethBalance : "Connect wallet"} value={amountIn} onChange={(v) => setAmountIn(v)} /><button className="direction-button" aria-label="Swap" disabled><ArrowDownUp size={16} /></button><TokenInput label="You receive" token="SHREE" balance={account ? shBalance : "Connect wallet"} value={amountIn === '0.0002' ? amountOut : '0'} disabled /></div><div className="trade-details"><div><span>Exchange rate</span><b>0.0002 ETH = 10 SHREE</b></div><div><span>Network Fee</span><b>Standard Sepolia Gas</b></div><div className="route"><span>Route</span><b>ETH <ArrowRight size={13} /> SHREE</b></div></div><button className="primary-action" disabled={!account || !hasAmount || (hasAmount && !hasBalance) || loading} onClick={handleSwap}>{loading ? (txState === 'confirming' ? 'Confirm in wallet...' : 'Transaction pending...') : !account ? 'Connect wallet' : !hasAmount ? 'Enter exactly 0.0002 ETH' : !hasBalance ? 'Insufficient ETH' : 'Swap'} <ArrowRight size={17} /></button><TxStatus state={txState} hash={txHash} /><p className="wallet-note"><ShieldCheck size={14} /> Transactions are executed on Ethereum Sepolia</p></div>
 }
 
 function TransactionsPage() { 
@@ -215,14 +110,23 @@ function TransactionsPage() {
     getRecentSwaps().then(setEvents)
   }, [])
 
-  return <main className="page-wrap"><div className="page-title"><p className="eyebrow">ACTIVITY</p><h1>Recent swaps</h1><p>Transactions from the SHREE / ETH pool on Ethereum Sepolia.</p></div><div className="transactions-card">
-    {events.length === 0 ? <div className="empty-state"><div className="empty-icon"><ArrowDownUp size={20} /></div><h2>No transactions yet</h2><p>Swap activity will appear here once the pool is connected to a live contract.</p><button className="secondary-action">View Sepolia explorer <ExternalLink size={15} /></button></div> : 
+  return <main className="page-wrap"><div className="page-title"><p className="eyebrow">ACTIVITY</p><h1>Recent swaps</h1><p>Real-time transactions from the SHREE / ETH pool on Ethereum Sepolia.</p></div><div className="transactions-card">
+    {events.length === 0 ? <div className="empty-state"><div className="empty-icon"><ArrowDownUp size={20} /></div><h2>No transactions yet</h2><p>Swap activity will appear here once the pool is connected to a live contract.</p><a href="https://sepolia.etherscan.io/address/0x3FcaB0D5B60853b6a55b1A2C9aE93CB4aF0D3ac4" target="_blank" className="secondary-action">View Sepolia explorer <ExternalLink size={15} /></a></div> : 
       <div style={{width: '100%'}}>
+        <div style={{padding: '1rem', borderBottom: '1px solid #ffffff1a', display: 'flex', justifyContent: 'space-between', color: '#999', fontSize: '0.8rem', textTransform: 'uppercase'}}>
+          <span>Action</span>
+          <span>Amount In</span>
+          <span>Amount Out</span>
+          <span>Status</span>
+          <span>Explorer</span>
+        </div>
         {events.map((e, i) => (
-          <div key={i} style={{padding: '1rem', borderBottom: '1px solid #ffffff1a', display: 'flex', justifyContent: 'space-between'}}>
-            <span>{e.isSHForETH ? 'SHREE -> ETH' : 'ETH -> SHREE'}</span>
-            <span>{e.amountIn} -> {e.amountOut}</span>
-            <a href={`https://sepolia.etherscan.io/tx/${e.transactionHash}`} target="_blank" style={{color: '#999'}}>{e.transactionHash.slice(0, 10)}...</a>
+          <div key={i} style={{padding: '1rem', borderBottom: '1px solid #ffffff1a', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <span style={{fontWeight: 500}}>{e.isSHForETH ? 'SHREE → ETH' : 'ETH → SHREE'}</span>
+            <span>{parseFloat(e.amountIn).toFixed(4)} {e.isSHForETH ? 'SH' : 'ETH'}</span>
+            <span>{Math.round(parseFloat(e.amountOut))} {e.isSHForETH ? 'ETH' : 'SH'}</span>
+            <span style={{color: '#4ade80', display: 'flex', alignItems: 'center', gap: '4px'}}><Check size={14} /> Success</span>
+            <a href={`https://sepolia.etherscan.io/tx/${e.transactionHash}`} target="_blank" style={{color: '#a78bfa', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '4px'}}>View Tx <ExternalLink size={14}/></a>
           </div>
         ))}
       </div>
@@ -304,5 +208,5 @@ export default function Page() {
     fetchStats()
   }
 
-  return <><Header page={page} setPage={setPage} account={account} onConnect={handleConnect} isConnecting={isConnecting} /><main className="app-shell">{page === 'swap' && <><section className="hero"><div className="hero-copy"><div className="hero-logo"><Image src={SOURCE_IMAGE} alt="Purple Shree wolf emblem" width={84} height={84} /></div><p className="eyebrow">DECENTRALIZED EXCHANGE</p><h2>A simpler way to <span>swap SHREE.</span></h2><p>Trade SHREE on Ethereum Sepolia with a transparent, non-custodial exchange.</p></div><SwapCard account={account} shBalance={shBalance} ethBalance={ethBalance} onUpdate={handleUpdate} /></section><PoolStats stats={stats} /></>}{page === 'liquidity' && <LiquidityPage account={account} shBalance={shBalance} ethBalance={ethBalance} onUpdate={handleUpdate} />}{page === 'transactions' && <TransactionsPage />}</main><footer><span>SHREE SWAP · Ethereum Sepolia</span><span>Built for the SHREE community</span></footer></> 
+  return <><Header page={page} setPage={setPage} account={account} onConnect={handleConnect} isConnecting={isConnecting} /><main className="app-shell">{page === 'swap' && <><section className="hero"><div className="hero-copy"><div className="hero-logo"><Image src={SOURCE_IMAGE} alt="Purple Shree wolf emblem" width={84} height={84} /></div><p className="eyebrow">DECENTRALIZED EXCHANGE</p><h2>A simpler way to <span>swap SHREE.</span></h2><p>Trade SHREE on Ethereum Sepolia with a transparent, non-custodial exchange.</p></div><SwapCard account={account} shBalance={shBalance} ethBalance={ethBalance} onUpdate={handleUpdate} /></section><PoolStats stats={stats} /></>}{page === 'transactions' && <TransactionsPage />}</main><footer><span>SHREE SWAP · Ethereum Sepolia</span><span>Built for the SHREE community</span></footer></> 
 }
