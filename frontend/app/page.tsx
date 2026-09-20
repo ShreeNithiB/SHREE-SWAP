@@ -82,8 +82,8 @@ function SwapCard({ account, shBalance, ethBalance, onUpdate }: { account: strin
     setTxState('preparing')
     setTxHash('')
     try {
-      // Small slippage buffer for the fixed rate
-      const minOut = "9.9"
+      // Set minOut to 0 to guarantee the transaction never fails due to price impact
+      const minOut = "0.0"
       setTxState('confirming')
       
       const tx = await swapETHForSH(amountIn, minOut)
