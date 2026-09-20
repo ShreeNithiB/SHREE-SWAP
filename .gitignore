@@ -3,6 +3,8 @@ node_modules/
 dist/
 build/
 coverage/
+AGENTS.md/
+CLAUDE.md/
 
 # Hardhat
 artifacts/
