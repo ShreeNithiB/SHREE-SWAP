@@ -25,8 +25,19 @@ export const connectWallet = async (): Promise<string> => {
 
     return accounts[0];
   } catch (error: any) {
-    if (error.code === -32002) {
+    if (error.code === -32002 || (error.error && error.error.code === -32002)) {
       throw new Error("A MetaMask connection request is already pending. Please open MetaMask and approve or reject it.");
+    }
+    
+    // Check for specific wallet errors like Brave Wallet's "Unable to find any account for 60"
+    const errorMsg = error.message || (error.error && error.error.message) || "";
+    if (errorMsg.includes("Unable to find any account for 60")) {
+      throw new Error("Wallet is locked or not fully set up. If you are using Brave Browser, please disable the built-in Brave Wallet in settings or unlock it, and try again.");
+    }
+
+    // Attempt to extract the innermost useful message
+    if (error.error && error.error.message) {
+      throw new Error(error.error.message);
     }
     throw error;
   }
