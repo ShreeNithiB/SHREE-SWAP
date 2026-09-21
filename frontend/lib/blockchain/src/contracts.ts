@@ -3,6 +3,7 @@ import { config } from "./config";
 import { getProvider } from "./provider";
 
 const erc20Abi = [
+  "function totalSupply() view returns (uint256)",
   "function balanceOf(address owner) view returns (uint256)",
   "function transfer(address to, uint amount) returns (bool)",
   "function approve(address spender, uint256 amount) returns (bool)",
@@ -30,12 +31,23 @@ export const getContracts = async () => {
   const provider = getProvider();
   if (!provider) throw new Error("No provider available");
   
-  const signer = await provider.getSigner();
-
-  const shreeToken = new Contract(config.shreeTokenAddress, erc20Abi, signer);
-  const shreeSwap = new Contract(config.shreeSwapAddress, shreeSwapAbi, signer);
   const shreeTokenRO = new Contract(config.shreeTokenAddress, erc20Abi, provider);
   const shreeSwapRO = new Contract(config.shreeSwapAddress, shreeSwapAbi, provider);
+
+  let signer = null;
+  let shreeToken = shreeTokenRO as any;
+  let shreeSwap = shreeSwapRO as any;
+
+  try {
+    const accounts = await provider.listAccounts();
+    if (accounts.length > 0) {
+      signer = await provider.getSigner();
+      shreeToken = new Contract(config.shreeTokenAddress, erc20Abi, signer);
+      shreeSwap = new Contract(config.shreeSwapAddress, shreeSwapAbi, signer);
+    }
+  } catch (error) {
+    // Ignore error, fallback to read-only contracts
+  }
 
   return { shreeToken, shreeSwap, shreeTokenRO, shreeSwapRO, signer, provider };
 };

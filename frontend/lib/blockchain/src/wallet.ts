@@ -1,6 +1,12 @@
 import { getProvider } from "./provider";
 import { config } from "./config";
 
+export const getSigner = async () => {
+  const provider = getProvider();
+  if (!provider) throw new Error("MetaMask is not installed.");
+  return provider.getSigner();
+};
+
 export const connectWallet = async (): Promise<string> => {
   const provider = getProvider();
   if (!provider) throw new Error("MetaMask is not installed.");
@@ -52,5 +58,26 @@ export const getConnectedAccount = async (): Promise<string | null> => {
     return accounts.length > 0 ? accounts[0] : null;
   } catch (error) {
     return null;
+  }
+};
+
+export const addTokenToMetaMask = async (): Promise<boolean> => {
+  const provider = getProvider();
+  if (!provider) return false;
+
+  try {
+    const wasAdded = await provider.send("wallet_watchAsset", [{
+      type: "ERC20",
+      options: {
+        address: config.shreeTokenAddress,
+        symbol: "SHREE",
+        decimals: 18,
+        image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-kouiDVbVwM3ws2oTMxcnFqZn4Inh9K.png",
+      },
+    }]);
+    return !!wasAdded;
+  } catch (error) {
+    console.error("Failed to add token to MetaMask", error);
+    return false;
   }
 };

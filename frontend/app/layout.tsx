@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { SIWEProvider } from '@/lib/SIWEContext'
 
 export const metadata: Metadata = {
   title: 'SHREE SWAP — Decentralized Exchange',
@@ -31,7 +32,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <SIWEProvider>
+          {children}
+        </SIWEProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
